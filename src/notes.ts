@@ -36,3 +36,11 @@ export function formatList(notes: Note[]): string {
   if (notes.length === 0) return "No notes yet.";
   return notes.map((n) => `${n.id}. ${n.text} (${n.created})`).join("\n");
 }
+
+const grey = (s: string): string => `\x1b[90m${s}\x1b[39m`;
+const green = (s: string): string => `\x1b[32m${s}\x1b[39m`;
+
+export function formatListColor(notes: Note[]): string {
+  if (notes.length === 0) return "No notes yet.";
+  return notes.map((n) => `${grey(String(n.id))}. ${green(n.text)} (${n.created})`).join("\n");
+}

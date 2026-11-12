@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { run } from "../src/cli.ts";
-import { addNote, deleteNote, formatList, NotesError, type Note } from "../src/notes.ts";
+import { addNote, deleteNote, formatList, formatListColor, NotesError, type Note } from "../src/notes.ts";
 
 const DAY = "2026-11-06";
 const tmpFile = () => join(mkdtempSync(join(tmpdir(), "notes-")), "notes.json");
@@ -54,5 +54,53 @@ describe("cli", () => {
 
   it("prints usage for unknown commands", () => {
     expect(run(["fly"], tmpFile(), DAY).code).toBe(2);
+  });
+});
+
+describe("formatListColor", () => {
+  it("colours id grey and text green", () => {
+    const notes: Note[] = [{ id: 1, text: "buy milk", created: "2026-01-01" }];
+    expect(formatListColor(notes)).toBe("\x1b[90m1\x1b[39m. \x1b[32mbuy milk\x1b[39m (2026-01-01)");
+  });
+
+  it("colours each line separately", () => {
+    const notes: Note[] = [
+      { id: 1, text: "a", created: "2026-01-01" },
+      { id: 2, text: "b", created: "2026-01-02" },
+    ];
+    expect(formatListColor(notes)).toBe(
+      "\x1b[90m1\x1b[39m. \x1b[32ma\x1b[39m (2026-01-01)\n\x1b[90m2\x1b[39m. \x1b[32mb\x1b[39m (2026-01-02)",
+    );
+  });
+
+  it("leaves the empty list plain", () => {
+    expect(formatListColor([])).toBe("No notes yet.");
+  });
+});
+
+describe("cli color", () => {
+  it("lists in colour when asked", () => {
+    const file = tmpFile();
+    run(["add", "hello"], file, DAY);
+    expect(run(["list"], file, DAY, true)).toEqual({
+      code: 0,
+      out: "\x1b[90m1\x1b[39m. \x1b[32mhello\x1b[39m (" + DAY + ")",
+    });
+  });
+
+  it("keeps the empty list plain in colour mode", () => {
+    expect(run(["list"], tmpFile(), DAY, true)).toEqual({ code: 0, out: "No notes yet." });
+  });
+
+  it("is plain by default", () => {
+    const file = tmpFile();
+    run(["add", "hello"], file, DAY);
+    expect(run(["list"], file, DAY).out).toBe("1. hello (" + DAY + ")");
+  });
+
+  it("does not colour add and delete", () => {
+    const file = tmpFile();
+    expect(run(["add", "x"], file, DAY, true)).toEqual({ code: 0, out: "Added note 1." });
+    expect(run(["delete", "1"], file, DAY, true)).toEqual({ code: 0, out: "Deleted note 1." });
   });
 });

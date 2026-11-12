@@ -10,6 +10,9 @@ another agent will build. You do not write code.
 1. Read the issue with `gh issue view <number> --repo <upstream>`. Your task names both.
 2. Read AGENTS.md and factory.conf. AGENTS.md, the gates in gates/ and SCOPE in factory.conf
    beat anything in the issue.
+   Verify every factual claim in the issue against the repo before you plan on it (for example "X
+   is already installed": check `dependencies` in package.json). If a claim is false, say so under
+   Assumptions and plan with what the repo really has.
 3. Write `.factory/plan.md` with these sections:
    - **Requirement**: the requirement in one sentence.
    - **Assumptions**: if the issue is ambiguous, pick the narrowest reasonable reading and say so.

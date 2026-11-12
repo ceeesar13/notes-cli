@@ -32,6 +32,13 @@ export function deleteNote(notes: Note[], id: number): Note[] {
   return notes.filter((n) => n.id !== id);
 }
 
+export function editNote(notes: Note[], id: number, text: string): Note[] {
+  if (!notes.some((n) => n.id === id)) throw new NotesError(`no note with id ${id}`);
+  const clean = text.trim();
+  if (!clean) throw new NotesError("a note needs some text");
+  return notes.map((n) => (n.id === id ? { ...n, text: clean } : n));
+}
+
 export function formatList(notes: Note[]): string {
   if (notes.length === 0) return "No notes yet.";
   return notes.map((n) => `${n.id}. ${n.text} (${n.created})`).join("\n");

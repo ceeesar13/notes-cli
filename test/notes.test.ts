@@ -1,9 +1,9 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { run } from "../src/cli.ts";
-import { addNote, deleteNote, formatList, NotesError, type Note } from "../src/notes.ts";
+import { addNote, deleteNote, formatList, NotesError, searchNotes, type Note } from "../src/notes.ts";
 
 const DAY = "2026-11-06";
 const tmpFile = () => join(mkdtempSync(join(tmpdir(), "notes-")), "notes.json");
@@ -54,5 +54,69 @@ describe("cli", () => {
 
   it("prints usage for unknown commands", () => {
     expect(run(["fly"], tmpFile(), DAY).code).toBe(2);
+  });
+});
+
+describe("searchNotes", () => {
+  const notes = addNote(addNote([], "buy milk", DAY), "Walk DOG", DAY);
+
+  it("returns only matching notes", () => {
+    expect(searchNotes(notes, "milk").map((n) => n.id)).toEqual([1]);
+  });
+
+  it("ignores case in both directions", () => {
+    expect(searchNotes(notes, "MILK").map((n) => n.id)).toEqual([1]);
+    expect(searchNotes(notes, "dog").map((n) => n.id)).toEqual([2]);
+  });
+
+  it("matches substrings", () => {
+    expect(searchNotes(notes, "mil").length).toBe(1);
+  });
+
+  it("returns an empty array when nothing matches", () => {
+    expect(searchNotes(notes, "cat")).toEqual([]);
+  });
+
+  it("refuses empty or whitespace queries", () => {
+    expect(() => searchNotes(notes, "")).toThrow(NotesError);
+    expect(() => searchNotes(notes, "   ")).toThrow(NotesError);
+  });
+});
+
+describe("cli search", () => {
+  const setup = () => {
+    const file = tmpFile();
+    run(["add", "buy", "milk"], file, DAY);
+    run(["add", "walk", "dog"], file, DAY);
+    return file;
+  };
+
+  it("prints only matching notes", () => {
+    expect(run(["search", "milk"], setup(), DAY)).toEqual({ code: 0, out: "1. buy milk (2026-11-06)" });
+  });
+
+  it("is case-insensitive", () => {
+    expect(run(["search", "MILK"], setup(), DAY).out).toBe("1. buy milk (2026-11-06)");
+  });
+
+  it("supports multi-word queries", () => {
+    expect(run(["search", "buy", "milk"], setup(), DAY).out).toBe("1. buy milk (2026-11-06)");
+  });
+
+  it("reports no matches with code 0", () => {
+    expect(run(["search", "cat"], setup(), DAY)).toEqual({ code: 0, out: "No matching notes." });
+  });
+
+  it("errors without text", () => {
+    const res = run(["search"], setup(), DAY);
+    expect(res.code).toBe(1);
+    expect(res.out).toContain("error:");
+  });
+
+  it("does not modify the notes file", () => {
+    const file = setup();
+    const before = readFileSync(file, "utf8");
+    run(["search", "milk"], file, DAY);
+    expect(readFileSync(file, "utf8")).toBe(before);
   });
 });
